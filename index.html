@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>윙즈머니 · 관리자</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --ink:#171334; --ink2:#241c52; --plum:#3b2f7a;
+    --gold:#f5c451; --gold-deep:#e0a92e; --mint:#3fce9c; --mint-deep:#22a37a;
+    --coral:#ff7a5c; --coral-deep:#e85536; --text:#2a2550; --muted:#726b93; --line:#e6e1f5;
+    --bg1:#ece7ff; --bg2:#f7f4ff; --card:#fff; --shadow:0 18px 44px -20px rgba(36,28,82,.45);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif; color:var(--text);
+    background:radial-gradient(1200px 500px at 50% -10%, #d9d0ff 0%, transparent 60%),linear-gradient(160deg,var(--bg1),var(--bg2));
+    min-height:100vh; display:flex; justify-content:center; padding:18px 14px 40px;}
+  .wrap{width:100%; max-width:760px;}
+  .brand{display:flex; align-items:center; gap:10px; margin:2px 0 16px;}
+  .brand h1{font-size:17px; margin:0; font-weight:800; color:var(--ink);}
+  .brand small{display:block; font-size:11px; color:var(--muted); font-weight:600;}
+  .coin{width:30px; height:30px; flex:none;}
+  .logout{margin-left:auto; background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px; box-shadow:var(--shadow); margin-bottom:14px;}
+  label{display:block; font-size:12.5px; font-weight:700; color:var(--ink); margin:0 0 6px;}
+  input,select{width:100%; padding:14px 15px; border:1.5px solid var(--line); border-radius:14px; font-size:16px; font-family:inherit; color:var(--text); background:#fff; outline:none;}
+  input:focus,select:focus{border-color:var(--gold);}
+  .field{margin-bottom:14px;}
+  .row{display:flex; gap:10px;} .row>*{flex:1;}
+  .btn{width:100%; border:none; border-radius:14px; padding:15px; font-size:15.5px; font-weight:800; cursor:pointer; font-family:inherit;}
+  .btn:active{transform:translateY(1px);} .btn:focus-visible{outline:3px solid var(--ink); outline-offset:2px;}
+  .btn-gold{background:linear-gradient(140deg,var(--gold),var(--gold-deep)); color:#4a3708;}
+  .btn-mint{background:linear-gradient(140deg,var(--mint),var(--mint-deep)); color:#053a29;}
+  .btn-coral{background:linear-gradient(140deg,var(--coral),var(--coral-deep)); color:#fff;}
+  .btn-ghost{background:#fff; border:1.5px solid var(--line); color:var(--text);}
+  .rchip-tag{display:inline-flex; align-items:center; gap:6px; padding:8px 10px 8px 13px; border-radius:999px; border:1.5px solid; font-weight:800; font-size:12.5px; cursor:grab; touch-action:none; user-select:none;}
+  .rchip-tag.dragging{opacity:.55; cursor:grabbing; transform:scale(1.04);}
+  .reorder-hint{font-size:11px; color:var(--muted); margin:8px 0 0; opacity:.8;}
+  .rchip-tag.give{background:#e5f9f0; color:var(--mint-deep); border-color:#b9ecd6;}
+  .rchip-tag.deduct{background:#ffeae4; color:var(--coral-deep); border-color:#ffc9ba;}
+  .rchip-tag button{background:none; border:none; cursor:pointer; font-weight:900; color:inherit; padding:0; font-size:13px; line-height:1;}
+  .btn.sm{padding:12px; font-size:14px;}
+  .err{font-size:12.5px; margin-top:8px; min-height:16px; font-weight:600;}
+  .hide{display:none!important;} .mono{font-family:ui-monospace,monospace;}
+  .who{font-size:12px; color:var(--muted); font-weight:700; margin-bottom:14px; text-align:center; word-break:break-all;}
+  .center{text-align:center;} .lead{font-size:14px; color:var(--muted); margin:2px 0 18px; line-height:1.5;}
+  .stat3{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 10px; text-align:center;}
+  .stat b{display:block; font-size:20px; font-weight:800; color:var(--ink);} .stat span{font-size:11px; color:var(--muted); font-weight:700;}
+  .tabs{display:flex; gap:6px; margin-bottom:14px;}
+  .tab{flex:1; padding:11px 4px; border-radius:12px; border:1.5px solid var(--line); background:#fff; font-weight:800; font-size:13px; cursor:pointer; color:var(--muted);}
+  .tab.on{background:var(--ink2); color:#fff; border-color:var(--ink2);}
+  .tx{display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--line);} .tx:last-child{border-bottom:none;}
+  .tx .dot{width:38px; height:38px; border-radius:11px; display:grid; place-items:center; font-size:16px; font-weight:800; flex:none;}
+  .tx .dot.up{background:#e5f9f0; color:var(--mint-deep);} .tx .dot.down{background:#ffeae4; color:var(--coral-deep);} .tx .dot.n{background:#efeafd; color:var(--plum);}
+  .tx .info{min-width:0;} .tx .info b{font-size:14px; color:var(--ink); font-weight:800;} .tx .info span{display:block; font-size:11.5px; color:var(--muted);}
+  .tx .amt{margin-left:auto; font-weight:800; font-size:15px;} .tx .amt.up{color:var(--mint-deep);} .tx .amt.down{color:var(--coral-deep);}
+  .empty{text-align:center; color:var(--muted); font-size:13px; padding:22px 10px;}
+  /* collapsible */
+  .collapse-head{width:100%; background:none; border:none; display:flex; align-items:center; justify-content:space-between; padding:0; font-size:14px; font-weight:800; color:var(--ink); cursor:pointer; font-family:inherit;}
+  .chev{color:var(--muted); font-size:12px; transition:transform .15s;}
+  .chev.open{transform:rotate(90deg);}
+  .collapse-body{margin-top:14px;}
+  /* class blocks */
+  .clsblock{border:1px solid var(--line); border-radius:14px; margin-bottom:10px; overflow:hidden;}
+  .clshead{display:flex; align-items:center; gap:8px; padding:12px 14px; cursor:pointer; background:#faf9ff;}
+  .clshead .nm{font-size:14px; color:var(--ink); font-weight:800;}
+  .clshead .cnt{font-size:12px; color:var(--muted); font-weight:700;}
+  .clshead .sp{margin-left:auto;}
+  .clsbtns{display:flex; gap:6px;}
+  .minibtn{background:#eee9fb; border:none; border-radius:8px; padding:7px 9px; font-size:11.5px; font-weight:800; color:var(--plum); cursor:pointer;}
+  .minibtn.warn{background:#ffeae4; color:var(--coral-deep);}
+  .clsbody{padding:4px 14px 10px;}
+  .del,.pull{background:#ffeae4; border:none; border-radius:8px; padding:6px 10px; font-size:11.5px; font-weight:800; color:var(--coral-deep); cursor:pointer; margin-left:8px;}
+  .pull{background:#f0ecfb; color:var(--plum);}
+  .chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{padding:9px 13px; border-radius:999px; border:1.5px solid var(--line); background:#fff; font-weight:800; font-size:12.5px; cursor:pointer; color:var(--muted);}
+  .chip.on{background:var(--gold); border-color:var(--gold-deep); color:#4a3708;}
+  .banner{background:#fff3f0; border:1px solid #f4c4b8; color:#a8371e; border-radius:14px; padding:12px 14px; font-size:12.5px; font-weight:600; margin-bottom:14px; line-height:1.5;}
+  /* modal */
+  .modal-bg{position:fixed; inset:0; background:rgba(23,19,52,.5); display:flex; align-items:flex-end; justify-content:center; z-index:200;}
+  .modal{background:#fff; width:100%; max-width:560px; border-radius:22px 22px 0 0; height:78vh; max-height:86vh; display:flex; flex-direction:column; padding:18px;}
+  .modal-head{display:flex; align-items:center; gap:10px; margin-bottom:12px;}
+  .modal-head b{font-size:15px; color:var(--ink);}
+  .modal-head .x{margin-left:auto; background:#f3f0fb; border:none; border-radius:10px; width:34px; height:34px; font-size:15px; cursor:pointer; color:var(--muted);}
+  .modal-list{overflow:auto; flex:1; margin:12px 0; -webkit-overflow-scrolling:touch;}
+  .modal-foot{display:flex; align-items:center; gap:12px;} .modal-foot span{font-size:13px; font-weight:800; color:var(--plum);} .modal-foot .btn{flex:none; width:auto; padding:12px 22px;}
+  .ck{display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1px solid var(--line); cursor:pointer;}
+  .ck:last-child{border-bottom:none;}
+  .ck input{width:20px; height:20px; accent-color:var(--plum); flex:none; padding:0;}
+  .ck b{font-size:14px; color:var(--ink); font-weight:700;} .ck .c{font-size:11.5px; color:var(--muted);}
+  .tagged{margin-left:auto; font-size:11px; color:var(--mint-deep); font-weight:800;}
+  .txbtn{flex:none; background:#eee9fb; border:none; border-radius:9px; padding:9px 12px; font-size:11.5px; font-weight:800; color:var(--plum); cursor:pointer;}
+  .txrestore{flex:none; width:34px; height:34px; border-radius:9px; background:#fff3f0; color:var(--coral-deep); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px;}
+  .edittag{font-size:10.5px; font-weight:800; color:var(--gold-deep); background:#fff6df; padding:2px 7px; border-radius:999px; margin-left:4px; white-space:nowrap;}
+  .canceltag{font-size:10.5px; font-weight:800; color:var(--coral-deep); background:#ffeae4; padding:2px 7px; border-radius:999px; margin-left:4px; white-space:nowrap;}
+  .modal.auto{height:auto;}
+  #toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px); opacity:0; background:var(--ink); color:#fff; padding:12px 14px; border-radius:14px; font-weight:700; font-size:14px; box-shadow:var(--shadow); transition:all .25s ease; z-index:300; max-width:88%; text-align:center; pointer-events:none; display:flex; align-items:center; gap:10px; justify-content:center;}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto;}
+  #toast .toastUndo{pointer-events:auto; flex:none; background:rgba(255,255,255,.18); border:none; color:#fff; font-weight:800; font-size:12.5px; padding:8px 12px; border-radius:10px; cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div><h1>관리자</h1><small>WINGS MONEY</small></div>
+    <button class="logout hide" id="logoutBtn" onclick="signOutNow()">로그아웃</button>
+  </div>
+
+  <div id="cfgBanner" class="banner hide"></div>
+
+  <div id="login" class="card center hide">
+    <p class="lead">관리자용 화면입니다.<br>비밀번호를 입력하세요.</p>
+    <input id="pw" type="password" inputmode="text" placeholder="비밀번호" autocomplete="current-password" style="text-align:center;"/>
+    <div style="height:12px"></div>
+    <button class="btn btn-gold" onclick="signIn()">입장</button>
+    <div class="err" id="loginErr" style="color:var(--coral-deep)"></div>
+  </div>
+
+  <div id="denied" class="card center hide">
+    <p class="lead" style="color:var(--coral-deep);font-weight:700;">이 계정은 관리자 권한이 없습니다.</p>
+    <p class="who" id="deniedEmail"></p>
+    <div style="height:12px"></div>
+    <button class="btn btn-ghost sm" onclick="signOutNow()">다른 계정으로 로그인</button>
+  </div>
+
+  <div id="checking" class="card center hide"><p class="lead" style="margin:8px 0;">확인 중…</p></div>
+
+  <div id="panel" class="hide">
+    <div class="stat3">
+      <div class="stat"><b id="sStudents">0</b><span>학생 수</span></div>
+      <div class="stat"><b id="sTotal">$0</b><span>총 윙즈머니</span></div>
+      <div class="stat"><b id="sCount">0</b><span>거래 건수</span></div>
+    </div>
+    <div class="tabs">
+      <button class="tab on" id="tab-cls" onclick="tab('cls')">반·학생</button>
+      <button class="tab" id="tab-tx" onclick="tab('tx')">거래내역</button>
+      <button class="tab" id="tab-bal" onclick="tab('bal')">잔액</button>
+      <button class="tab" id="tab-set" onclick="tab('set')">설정</button>
+    </div>
+
+    <!-- 반·학생 -->
+    <div id="clsCard" class="hide">
+      <!-- 반 추가 (접힘) -->
+      <div class="card">
+        <button class="collapse-head" onclick="togglePanel('addClassBody')"><span>＋ 반 추가</span><span class="chev" id="chev-addClassBody">▸</span></button>
+        <div id="addClassBody" class="collapse-body hide">
+          <div class="row" style="margin-bottom:0">
+            <input id="newClass" type="text" placeholder="예: 3학년 1반"/>
+            <button class="btn btn-gold sm" style="flex:none;width:auto;padding:12px 18px" onclick="addClass()">추가</button>
+          </div>
+          <div class="err" id="clsErr" style="color:var(--coral-deep)"></div>
+        </div>
+      </div>
+
+      <!-- 학생 추가 (접힘) -->
+      <div class="card">
+        <button class="collapse-head" onclick="togglePanel('addStuBody')"><span>＋ 학생 추가</span><span class="chev" id="chev-addStuBody">▸</span></button>
+        <div id="addStuBody" class="collapse-body hide">
+          <div class="field"><input id="stuName" type="text" placeholder="학생 이름"/></div>
+          <div class="field"><input id="stuCode" type="text" placeholder="코드 (필수)" maxlength="16"/></div>
+          <div class="field"><label>반 선택 (여러 개 가능 · 선택 안 하면 미분류)</label><div id="stuClassChips" class="chips"></div></div>
+          <button class="btn btn-gold" onclick="addStudent()">학생 등록</button>
+          <div class="err" id="stuErr" style="color:var(--coral-deep)"></div>
+        </div>
+      </div>
+
+      <!-- 반별 학생 (접힘) -->
+      <div class="card">
+        <button class="collapse-head" onclick="togglePanel('clsListBody')"><span>반별 학생</span><span class="chev" id="chev-clsListBody">▸</span></button>
+        <div id="clsListBody" class="collapse-body hide">
+          <div id="clsList"><div class="empty">불러오는 중…</div></div>
+        </div>
+      </div>
+
+      <!-- 전체 학생 (접힘) -->
+      <div class="card">
+        <button class="collapse-head" onclick="togglePanel('allStuBody')"><span>전체 학생</span><span class="chev" id="chev-allStuBody">▸</span></button>
+        <div id="allStuBody" class="collapse-body hide">
+          <div class="field" style="margin-bottom:10px;"><input id="allStuSearch" type="text" placeholder="이름 / 코드 검색"/></div>
+          <div id="allStuList"><div class="empty">불러오는 중…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="txCard" class="card hide">
+      <div class="field" style="margin-bottom:10px;"><input id="txSearch" type="text" placeholder="이름 / 날짜(예: 7/10) / 메모 검색"/></div>
+      <div id="txList"><div class="empty">불러오는 중…</div></div>
+    </div>
+    <div id="balCard" class="card hide">
+      <div class="row" style="margin-bottom:10px;">
+        <input id="balSearch" type="text" placeholder="이름 / 코드 검색"/>
+        <button class="btn btn-ghost sm" id="balSortBtn" style="flex:none;width:auto;padding:12px 16px;" onclick="toggleBalSort()">잔액 ↓</button>
+      </div>
+      <div id="balList"></div>
+    </div>
+    <div id="setCard" class="hide">
+      <!-- 지급 사유 (접힘) -->
+      <div class="card">
+        <button class="collapse-head" onclick="togglePanel('setGiveBody')"><span>지급 사유 추가 (초록)</span><span class="chev" id="chev-setGiveBody">▸</span></button>
+        <div id="setGiveBody" class="collapse-body hide">
+          <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">선생님 화면에 초록 버튼으로 표시됩니다.</p>
+          <div class="row" style="margin:0 0 10px;">
+            <input id="newReasonGive" type="text" placeholder="예: 숙제 보상"/>
+            <input id="newReasonGiveAmt" type="number" inputmode="numeric" min="1" step="1" placeholder="$" style="flex:0 0 90px;"/>
+            <button class="btn btn-mint sm" style="flex:none;width:auto;padding:12px 16px;" onclick="addReason('give')">추가</button>
+          </div>
+          <div id="reasonListGive" class="chips"></div>
+          <p class="reorder-hint">칩을 끌어서 순서를 바꿀 수 있어요.</p>
+        </div>
+      </div>
+
+      <!-- 차감 사유 (접힘) -->
+      <div class="card">
+        <button class="collapse-head" onclick="togglePanel('setDeductBody')"><span>차감 사유 추가 (빨강)</span><span class="chev" id="chev-setDeductBody">▸</span></button>
+        <div id="setDeductBody" class="collapse-body hide">
+          <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">선생님 화면에 빨강 버튼으로 표시됩니다.</p>
+          <div class="row" style="margin:0 0 10px;">
+            <input id="newReasonDeduct" type="text" placeholder="예: 지각"/>
+            <input id="newReasonDeductAmt" type="number" inputmode="numeric" min="1" step="1" placeholder="$" style="flex:0 0 90px;"/>
+            <button class="btn btn-coral sm" style="flex:none;width:auto;padding:12px 16px;" onclick="addReason('deduct')">추가</button>
+          </div>
+          <div id="reasonListDeduct" class="chips"></div>
+          <p class="reorder-hint">칩을 끌어서 순서를 바꿀 수 있어요.</p>
+        </div>
+      </div>
+
+      <!-- 선생님 이름 (접힘) -->
+      <div class="card">
+        <button class="collapse-head" onclick="togglePanel('setTeacherBody')"><span>선생님 이름 정하기</span><span class="chev" id="chev-setTeacherBody">▸</span></button>
+        <div id="setTeacherBody" class="collapse-body hide">
+          <p style="font-size:12px;color:var(--muted);margin:0 0 10px;">정한 이름이 각 선생님 화면과 거래내역에 표시됩니다.</p>
+          <button class="btn btn-gold sm" style="margin-bottom:12px;" onclick="saveAllTeachers()">이름 저장</button>
+          <div id="teacherList"></div>
+        </div>
+      </div>
+
+      <!-- 백업 (접힘) -->
+      <div class="card">
+        <button class="collapse-head" onclick="togglePanel('setBackupBody')"><span>백업</span><span class="chev" id="chev-setBackupBody">▸</span></button>
+        <div id="setBackupBody" class="collapse-body hide">
+          <p style="font-size:12px;color:var(--muted);margin:0 0 10px;">관리자 페이지에 접속할 때마다 마지막 백업으로부터 24시간이 지났으면 자동으로 Firebase 안에 백업됩니다.</p>
+          <p style="font-size:13px;color:var(--text);font-weight:700;margin:0 0 2px;">마지막 백업: <span id="backupLastAt" style="font-weight:800;color:var(--ink);">확인 중…</span></p>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 14px;"><span id="backupCount">-</span></p>
+          <button class="btn btn-ghost" onclick="manualBackup()">지금 백업 (Firebase에 저장)</button>
+
+          <div class="field" style="margin-top:16px;">
+            <label>보관 개수</label>
+            <div class="row">
+              <input id="backupKeepInput" type="number" inputmode="numeric" min="1" step="1" placeholder="14"/>
+              <button class="btn btn-ghost sm" style="flex:none;width:auto;padding:12px 16px;" onclick="saveBackupKeep()">저장</button>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;">이 개수보다 오래된 Firebase 백업은 자동으로 삭제돼요.</p>
+          </div>
+
+          <div style="height:16px"></div>
+          <p style="font-size:13px;font-weight:800;color:var(--ink);margin:0 0 6px;">파일로 다운로드</p>
+          <p style="font-size:12px;color:var(--muted);margin:0 0 10px;">지금 상태를 JSON 파일로 내 컴퓨터에 저장해요.</p>
+          <button class="btn btn-mint" onclick="downloadBackup()">다운로드</button>
+          <div id="folderPickWrap" class="hide" style="margin-top:10px;">
+            <button class="btn btn-ghost sm" onclick="chooseBackupFolder()" id="folderPickBtn">저장 폴더 선택</button>
+            <p style="font-size:11px;color:var(--muted);margin:6px 0 0;" id="folderPickHint">폴더를 선택하면 다운로드 버튼을 누를 때마다 그 폴더에 바로 저장돼요. (Chrome/Edge 데스크톱만 지원)</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 위험 구역 (접힘) -->
+      <div class="card">
+        <button class="collapse-head" onclick="togglePanel('setDangerBody')"><span style="color:var(--coral-deep)">위험 구역</span><span class="chev" id="chev-setDangerBody">▸</span></button>
+        <div id="setDangerBody" class="collapse-body hide">
+          <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;">모든 학생의 <b>잔액</b>을 0으로 되돌리고, <b>거래내역</b>과 선생님들의 <b>즐겨찾기(별표)</b>를 모두 삭제합니다.<br>반·학생 명단, 이름, 지급/차감 사유 설정은 그대로 유지됩니다. 되돌릴 수 없습니다.</p>
+          <button class="btn btn-coral" onclick="resetValues()">값 초기화</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 학생 추가 모달 -->
+<div id="modal" class="modal-bg hide">
+  <div class="modal">
+    <div class="modal-head">
+      <b id="modalTitle">학생 변경</b>
+      <button class="x" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalClassTools" class="hide" style="display:flex; gap:8px; margin-bottom:12px;">
+      <input id="modalRenameInput" type="text" placeholder="반 이름" style="flex:1;"/>
+      <button class="btn btn-coral sm" id="modalDeleteBtn" style="flex:none;width:auto;padding:12px 14px;" onclick="deleteClassFromModal()">반 삭제</button>
+    </div>
+    <input id="modalSearch" type="text" placeholder="이름 검색"/>
+    <div id="modalList" class="modal-list"></div>
+    <div class="modal-foot"><span id="modalCount">0명 선택</span><button class="btn btn-gold" onclick="confirmChange()">변경 적용</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- 거래 변경/취소 모달 -->
+<div id="txModal" class="modal-bg hide">
+  <div class="modal">
+    <div class="modal-head">
+      <b id="txModalTitle">거래 변경</b>
+      <button class="x" onclick="closeTxModal()">✕</button>
+    </div>
+    <div id="txModalBody" style="overflow-y:auto; flex:1;"></div>
+  </div>
+</div>
+
+<!-- 학생별 거래내역 팝업 -->
+<div id="stuTxModal" class="modal-bg hide" onclick="if(event.target===this) closeStuTxModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <b id="stuTxModalTitle">거래내역</b>
+      <button class="x" onclick="closeStuTxModal()">✕</button>
+    </div>
+    <div id="stuTxModalBody" style="overflow-y:auto; flex:1;"></div>
+  </div>
+</div>
+
+<!-- 확인 팝업 (네이티브 confirm 대체) -->
+<div id="confirmModal" class="modal-bg hide" onclick="if(event.target===this) closeConfirmModal()">
+  <div class="modal auto">
+    <div class="modal-head"><b id="confirmModalTitle">확인</b><button class="x" onclick="closeConfirmModal()">✕</button></div>
+    <div id="confirmModalBody" style="font-size:14.5px; line-height:1.7; color:var(--text); margin-bottom:16px;"></div>
+    <div class="row">
+      <button class="btn btn-ghost" onclick="closeConfirmModal()">취소</button>
+      <button class="btn btn-coral" id="confirmModalOkBtn">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 학생 수정 모달 -->
+<div id="stuEditModal" class="modal-bg hide" onclick="if(event.target===this) closeStuEditModal()">
+  <div class="modal auto">
+    <div class="modal-head"><b>학생 수정</b><button class="x" onclick="closeStuEditModal()">✕</button></div>
+    <div class="field"><label>이름</label><input id="stuEditName" type="text"/></div>
+    <div class="field"><label>코드</label><input id="stuEditCode" type="text" maxlength="16" placeholder="코드"/></div>
+    <div class="field"><label>반 (여러 개 가능 · 선택 안 하면 미분류)</label><div id="stuEditClassChips" class="chips"></div></div>
+    <label class="ck" style="border:none; padding:8px 2px;"><input type="checkbox" id="stuEditWithdrawn"/><span><b>휴원 처리</b> <span style="color:var(--muted); font-weight:600;">(반·잔액은 유지, 목록에 흐리게 표시)</span></span></label>
+    <div class="err" id="stuEditErr"></div>
+    <div class="row" style="margin-top:8px;">
+      <button class="btn btn-ghost" onclick="closeStuEditModal()">취소</button>
+      <button class="btn btn-gold" onclick="saveStuEdit()">저장</button>
+    </div>
+    <button class="btn btn-coral" style="margin-top:10px;" onclick="deleteStuFromEdit()">학생 삭제</button>
+  </div>
+</div>
+
+<script>
+/* ▼▼▼ Firebase 설정 ▼▼▼ */
+const firebaseConfig = {
+  apiKey: "AIzaSyAYn0iR39Y67e26l6XW5CZMJQOEGgtethI",
+  authDomain: "wings-money-online.firebaseapp.com",
+  databaseURL: "https://wings-money-online-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "wings-money-online",
+  storageBucket: "wings-money-online.firebasestorage.app",
+  messagingSenderId: "910822004073",
+  appId: "1:910822004073:web:3a370ac32a10db7a9559f8"
+};
+const ADMIN_EMAIL = "admin@wings-money.app";
+/* ▲▲▲ */
+
+const $ = id => document.getElementById(id);
+const money = n => "$" + Number(n||0).toLocaleString("en-US");
+const signedMoney = n => (Number(n)>=0?"+":"-") + money(Math.abs(Number(n)||0));
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function toast(m, withUndo){
+  const t=$("toast");
+  t.innerHTML = withUndo ? `<span>${esc(m)}</span><button class="toastUndo" onclick="performUndo()">실행 취소</button>` : esc(m);
+  t.classList.add("show");
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.classList.remove("show"), withUndo?5000:2400);
+}
+function timeStr(ts){ const d=new Date(ts); const p=x=>String(x).padStart(2,"0"); return `${d.getMonth()+1}/${d.getDate()} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+function teacherLabelOf(t){ return t.teacher ? esc(t.teacher) : "-"; }
+
+/* -------- 확인 팝업 (네이티브 confirm 대체) -------- */
+let pendingConfirmFn=null;
+function askConfirm(html, fn, title){
+  $("confirmModalTitle").textContent = title || "확인";
+  $("confirmModalBody").innerHTML = html;
+  pendingConfirmFn = fn;
+  $("confirmModal").classList.remove("hide");
+}
+function closeConfirmModal(){ $("confirmModal").classList.add("hide"); pendingConfirmFn=null; }
+if($("confirmModalOkBtn")) $("confirmModalOkBtn").addEventListener("click", ()=>{
+  const fn=pendingConfirmFn;
+  $("confirmModal").classList.add("hide");
+  pendingConfirmFn=null;
+  if(fn) fn();
+});
+
+/* -------- 실행 취소 (Ctrl+Z / 모바일 토스트 버튼) -------- */
+let lastAction=null, undoTimer=null;
+function pushUndo(label, fn){
+  lastAction={label, fn};
+  clearTimeout(undoTimer);
+  undoTimer=setTimeout(()=>{ lastAction=null; }, 6000);
+}
+function performUndo(){
+  if(!lastAction){ return; }
+  const {label, fn}=lastAction;
+  lastAction=null; clearTimeout(undoTimer);
+  Promise.resolve(fn()).then(()=>toast(label+" 실행 취소되었습니다")).catch(()=>toast("실행 취소 중 오류가 발생했습니다."));
+}
+document.addEventListener("keydown", e=>{
+  if((e.ctrlKey||e.metaKey) && (e.key==="z"||e.key==="Z")){ e.preventDefault(); performUndo(); }
+});
+
+const configured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+let db=null, auth=null;
+if(configured){ firebase.initializeApp(firebaseConfig); db=firebase.database(); auth=firebase.auth(); }
+else { $("cfgBanner").classList.remove("hide"); $("cfgBanner").textContent="⚙ Firebase 설정이 필요합니다."; }
+
+/* 여러 반 소속 지원 (classIds 맵), 예전 classId(문자열)도 함께 인식 */
+function classesOf(a){
+  const ids = a && a.classIds ? Object.keys(a.classIds).filter(k=>a.classIds[k]) : [];
+  if(a && a.classId && !ids.includes(a.classId)) ids.push(a.classId);
+  return ids;
+}
+function inClass(a,cid){ return classesOf(a).includes(cid); }
+function noClass(a){ return classesOf(a).length===0; }
+
+function showOnly(id){ ["login","denied","checking","panel"].forEach(x=>$(x).classList.toggle("hide", x!==id)); $("logoutBtn").classList.toggle("hide", id!=="panel"); }
+
+/* -------- 로그인 -------- */
+function signIn(){
+  $("loginErr").textContent="";
+  const pw = $("pw").value;
+  if(!pw){ $("loginErr").textContent="비밀번호를 입력하세요."; return; }
+  showOnly("checking");
+  auth.signInWithEmailAndPassword(ADMIN_EMAIL, pw).catch(e=>{ showOnly("login"); $("loginErr").textContent="비밀번호가 올바르지 않습니다."; $("pw").value=""; });
+}
+function signOutNow(){ auth.signOut(); }
+function checkAccess(user){
+  showOnly("checking");
+  db.ref("config").once("value").then(()=>{ showOnly("panel"); tab("cls"); listen(); maybeAutoBackup(); renderBackupInfo(); })
+    .catch(()=>{ $("deniedEmail").textContent=user.email; showOnly("denied"); });
+}
+if(configured){ auth.onAuthStateChanged(user=>{ if(user) checkAccess(user); else showOnly("login"); }); }
+
+/* -------- live data -------- */
+let accCache={}, txCache={}, classesCache={}, started=false;
+let reasonsCache={give:{}, deduct:{}};
+/* ▼ 관리할 선생님 코드 번호 (teacher1,2,3,5,7,8,9). 번호를 바꾸려면 이 배열만 수정하세요. */
+const TEACHER_NUMS=[1,2,3,5,7,8,9];
+let teachersCache={};
+function listen(){
+  if(started) return; started=true;
+  db.ref("accounts").on("value", s=>{ accCache=s.val()||{}; renderStats(); renderBal(); renderManage(); renderAllStu(); if(!$("modal").classList.contains("hide")) renderModalList(); });
+  db.ref("transactions").on("value", s=>{ txCache=s.val()||{}; renderStats(); renderTx(); });
+  db.ref("classes").on("value", s=>{ classesCache=s.val()||{}; renderManage(); renderStuChips(); renderAllStu(); if(!$("stuEditModal").classList.contains("hide")) renderStuEditClassChips(); });
+  db.ref("reasons/give").on("value", s=>{ reasonsCache.give=s.val()||{}; renderReasons(); });
+  db.ref("reasons/deduct").on("value", s=>{ reasonsCache.deduct=s.val()||{}; renderReasons(); });
+  db.ref("teachers").on("value", s=>{ teachersCache=s.val()||{}; renderTeachers(); });
+}
+function renderStats(){
+  const codes=Object.keys(accCache);
+  $("sStudents").textContent=codes.length;
+  $("sTotal").textContent=money(codes.reduce((a,c)=>a+(accCache[c].balance||0),0));
+  $("sCount").textContent=Object.keys(txCache).length;
+}
+let txExpandedDates=new Set();
+function dateKeyOf(ts){ const d=new Date(ts); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function dateLabelOf(key){
+  const [y,m,d]=key.split("-").map(Number);
+  const dt=new Date(y,m-1,d);
+  const wd=["일","월","화","수","목","금","토"][dt.getDay()];
+  return `${m}/${d} (${wd})`;
+}
+function renderTx(){
+  const q=($("txSearch")&&$("txSearch").value||"").trim().toLowerCase();
+  let list = Object.entries(txCache).map(([id,t])=>({id,...t}));
+  list.sort((a,b)=>(b.localTs||b.ts||0)-(a.localTs||a.ts||0));
+  if(q){
+    list = list.filter(t=>{
+      const name=(t.name||"").toLowerCase();
+      const memo=(t.memo||"").toLowerCase();
+      const dt=timeStr(t.localTs||t.ts).toLowerCase();
+      return name.includes(q) || memo.includes(q) || dt.includes(q);
+    });
+  }
+  if(!list.length){ $("txList").innerHTML=`<div class="empty">${q?"검색 결과가 없습니다.":"거래내역이 없습니다."}</div>`; return; }
+  const groups={}, order=[];
+  list.forEach(t=>{ const k=dateKeyOf(t.localTs||t.ts); if(!groups[k]){ groups[k]=[]; order.push(k); } groups[k].push(t); });
+  $("txList").innerHTML = order.map(k=>{
+    const items=groups[k]; const open=txExpandedDates.has(k);
+    const rows = items.map(t=>{
+      const up=t.amount>=0, adminVoided=!!t.voided, teacherCanceled=!!t.canceled, canceled=adminVoided||teacherCanceled;
+      return `<div class="tx">
+        <div class="dot ${canceled?'n':(up?'up':'down')}">${canceled?'✕':(up?'＋':'－')}</div>
+        <div class="info"><b${canceled?' style="text-decoration:line-through;opacity:.6"':''}>${esc(t.name)}${t.edited?'<span class="edittag">수정됨</span>':''}${teacherCanceled?'<span class="canceltag">선생님 취소</span>':''} <span class="mono" style="color:var(--muted);font-weight:600">(${t.code})</span></b>
+        <span>${timeStr(t.localTs||t.ts)} · ${teacherLabelOf(t)}${t.memo?" · "+esc(t.memo):""} · 잔액 ${money(t.balanceAfter)}${canceled?" · 취소됨"+(t.voidReason?" ("+esc(t.voidReason)+")":""):""}</span></div>
+        <div class="amt ${canceled?'':(up?'up':'down')}"${canceled?' style="text-decoration:line-through;opacity:.5"':''}>${up?'+':'-'}${money(Math.abs(t.amount))}</div>
+        ${canceled?`<button class="txrestore" data-tx-restore="${t.id}" title="원상복구">↺</button>`:`<button class="txbtn" data-tx-edit="${t.id}">변경</button>`}
+      </div>`;
+    }).join("");
+    return `<div class="clsblock">
+      <div class="clshead" data-tx-toggle="${k}">
+        <span class="chev ${open?'open':''}">▸</span>
+        <span class="nm">${dateLabelOf(k)}</span><span class="cnt">${items.length}건</span>
+      </div>
+      ${open?`<div class="clsbody">${rows}</div>`:``}
+    </div>`;
+  }).join("");
+}
+let balSortDir='desc';
+function toggleBalSort(){
+  balSortDir = balSortDir==='desc' ? 'asc' : 'desc';
+  $("balSortBtn").textContent = "잔액 " + (balSortDir==='desc'?"↓":"↑");
+  renderBal();
+}
+function renderBal(){
+  const q=($("balSearch")&&$("balSearch").value||"").trim().toLowerCase();
+  let entries=Object.entries(accCache);
+  if(q) entries=entries.filter(([code,a])=>(a.name||"").toLowerCase().includes(q) || code.toLowerCase().includes(q));
+  entries.sort((a,b)=> balSortDir==='asc' ? (a[1].balance||0)-(b[1].balance||0) : (b[1].balance||0)-(a[1].balance||0));
+  $("balList").innerHTML = entries.length ? entries.map(([code,a])=>`
+    <div class="tx" data-baltx="${code}" style="cursor:pointer;"><div class="dot n">${esc(a.name.slice(0,1))}</div>
+    <div class="info"><b>${esc(a.name)}</b><span class="mono">코드 ${code}</span></div>
+    <div class="amt">${money(a.balance)}</div></div>`).join("") : `<div class="empty">${q?"검색 결과가 없습니다.":"등록된 학생이 없습니다."}</div>`;
+}
+function openStuTxModal(code){
+  const a=accCache[code]; if(!a) return;
+  $("stuTxModalTitle").textContent = a.name+" · 거래내역";
+  renderStuTxModalBody(code);
+  $("stuTxModal").classList.remove("hide");
+}
+function closeStuTxModal(){ $("stuTxModal").classList.add("hide"); }
+function renderStuTxModalBody(code){
+  const a=accCache[code]||{};
+  const list=Object.entries(txCache).filter(([id,t])=>t.code===code).sort((a,b)=>(b[1].localTs||b[1].ts||0)-(a[1].localTs||a[1].ts||0));
+  const header = `<div class="who" style="text-align:left;margin:0 0 14px;">현재 잔액 <b style="color:var(--ink)">${money(a.balance)}</b></div>`;
+  const rows = list.length ? list.map(([id,t])=>{
+    const up=t.amount>=0, adminVoided=!!t.voided, teacherCanceled=!!t.canceled, canceled=adminVoided||teacherCanceled;
+    return `<div class="tx">
+      <div class="dot ${canceled?'n':(up?'up':'down')}">${canceled?'✕':(up?'＋':'－')}</div>
+      <div class="info"><b${canceled?' style="text-decoration:line-through;opacity:.6"':''}>${up?'지급':'차감'}${t.edited?'<span class="edittag">수정됨</span>':''}${teacherCanceled?'<span class="canceltag">선생님 취소</span>':''}</b>
+      <span>${timeStr(t.localTs||t.ts)} · ${teacherLabelOf(t)}${t.memo?" · "+esc(t.memo):""}${canceled?" · 취소됨":""}</span></div>
+      <div class="amt ${canceled?'':(up?'up':'down')}"${canceled?' style="text-decoration:line-through;opacity:.5"':''}>${up?'+':'-'}${money(Math.abs(t.amount))}</div>
+    </div>`;
+  }).join("") : `<div class="empty">거래내역이 없습니다.</div>`;
+  $("stuTxModalBody").innerHTML = header+rows;
+}
+
+/* -------- 빠른 사유 (선생님 화면용) -------- */
+function renderReasons(){
+  const rkey=r=>(typeof r.order==='number'?r.order:(r.createdAt||0));
+  const build=(obj,type)=>Object.entries(obj)
+    .sort((a,b)=>rkey(a[1])-rkey(b[1]))
+    .map(([id,r])=>`<span class="rchip-tag ${type}" data-rtype="${type}" data-rid="${id}">${esc(r.text)}${r.amount?` · $${Number(r.amount).toLocaleString("en-US")}`:''}<button type="button" data-delreason="${type}|${id}" title="삭제">✕</button></span>`).join("");
+  const g=build(reasonsCache.give,'give'), d=build(reasonsCache.deduct,'deduct');
+  $("reasonListGive").innerHTML = g || `<span class="empty" style="padding:6px 0">등록된 사유가 없습니다.</span>`;
+  $("reasonListDeduct").innerHTML = d || `<span class="empty" style="padding:6px 0">등록된 사유가 없습니다.</span>`;
+  normalizeReasonOrder();
+}
+function nextReasonOrder(obj){
+  let m=-1; Object.values(obj||{}).forEach(r=>{ if(typeof r.order==='number' && r.order>m) m=r.order; });
+  return m+1;
+}
+// 기존 사유에 order가 없으면 생성순으로 한 번 부여 (여러 번 실행돼도 안전)
+function normalizeReasonOrder(){
+  ['give','deduct'].forEach(type=>{
+    const entries=Object.entries(reasonsCache[type]||{});
+    if(!entries.length) return;
+    if(!entries.some(([id,r])=>typeof r.order!=='number')) return;
+    const sorted=entries.sort((a,b)=>(a[1].createdAt||0)-(b[1].createdAt||0));
+    const updates={};
+    sorted.forEach(([id],i)=>{ updates["reasons/"+type+"/"+id+"/order"]=i; });
+    db.ref().update(updates).catch(()=>{});
+  });
+}
+// 화면상의 현재 순서를 Firebase에 저장
+function persistReasonOrder(type){
+  const cont = type==='give' ? $("reasonListGive") : $("reasonListDeduct");
+  if(!cont) return;
+  const chips=[...cont.querySelectorAll('.rchip-tag')];
+  const updates={};
+  chips.forEach((c,i)=>{ updates["reasons/"+type+"/"+c.dataset.rid+"/order"]=i; });
+  if(Object.keys(updates).length) db.ref().update(updates).catch(()=>toast("권한이 없거나 오류입니다."));
+}
+// 포인터 기반 드래그 정렬 (마우스·터치 모두 지원)
+(function(){
+  let el=null,type=null,sx=0,sy=0,active=false;
+  function down(e){
+    const chip=e.target.closest && e.target.closest('.rchip-tag');
+    if(!chip) return;
+    if(e.target.closest('[data-delreason]')) return; // 삭제 버튼은 드래그 제외
+    el=chip; type=chip.dataset.rtype; sx=e.clientX; sy=e.clientY; active=false;
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',up);
+  }
+  function move(e){
+    if(!el) return;
+    if(!active){
+      if(Math.abs(e.clientX-sx)<5 && Math.abs(e.clientY-sy)<5) return;
+      active=true; el.classList.add('dragging'); document.body.style.userSelect='none';
+    }
+    e.preventDefault();
+    el.style.pointerEvents='none';
+    const t=document.elementFromPoint(e.clientX,e.clientY);
+    el.style.pointerEvents='';
+    const over=t && t.closest ? t.closest('.rchip-tag') : null;
+    if(over && over!==el && over.dataset.rtype===type && over.parentNode===el.parentNode){
+      const r=over.getBoundingClientRect();
+      const after=(e.clientX>r.left+r.width/2);
+      over.parentNode.insertBefore(el, after?over.nextSibling:over);
+    }
+  }
+  function up(){
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',up);
+    document.body.style.userSelect='';
+    if(el) el.classList.remove('dragging');
+    if(active && el) persistReasonOrder(type);
+    el=null; type=null; active=false;
+  }
+  document.addEventListener('pointerdown',down);
+})();
+function addReason(type){
+  const inputId = type==='give' ? 'newReasonGive' : 'newReasonDeduct';
+  const amtId = type==='give' ? 'newReasonGiveAmt' : 'newReasonDeductAmt';
+  const v=$(inputId).value.trim();
+  if(!v) return;
+  const rawAmt=Math.floor(Number($(amtId).value));
+  const obj={ text:v, createdAt:Date.now(), order:nextReasonOrder(reasonsCache[type]) };
+  if(rawAmt>0) obj.amount=rawAmt;
+  db.ref("reasons/"+type).push(obj)
+    .then(()=>{ $(inputId).value=""; $(amtId).value=""; })
+    .catch(()=>toast("권한이 없거나 오류입니다."));
+}
+function deleteReason(type,id){
+  db.ref("reasons/"+type+"/"+id).remove().catch(()=>toast("권한이 없거나 오류입니다."));
+}
+
+/* -------- 선생님 이름 -------- */
+function renderTeachers(){
+  const box=$("teacherList"); if(!box) return;
+  if(!box.dataset.built){
+    box.innerHTML = TEACHER_NUMS.map(n=>`<div class="field" style="margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+      <span style="flex:none; width:32px; height:32px; border-radius:10px; background:#eee9fb; color:var(--plum); font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center;">${n}</span>
+      <input id="teacherName${n}" type="text" placeholder="선생님 이름 (코드 teacher${n})" style="flex:1;" onkeydown="if(event.key==='Enter')saveAllTeachers()"/>
+    </div>`).join("");
+    box.dataset.built="1";
+  }
+  TEACHER_NUMS.forEach(n=>{
+    const el=$("teacherName"+n);
+    if(el && document.activeElement!==el){
+      el.value = teachersCache[n]!=null ? String(teachersCache[n]) : "";
+    }
+  });
+}
+function saveAllTeachers(){
+  const updates={};
+  TEACHER_NUMS.forEach(n=>{ const el=$("teacherName"+n); if(el) updates[n]=el.value.trim(); });
+  db.ref("teachers").update(updates)
+    .then(()=>toast("선생님 이름 저장됨"))
+    .catch(()=>toast("권한이 없거나 오류입니다."));
+}
+
+/* -------- 접기/펼치기 -------- */
+function togglePanel(id){ const b=$(id); b.classList.toggle("hide"); const c=$("chev-"+id); if(c) c.classList.toggle("open", !b.classList.contains("hide")); }
+let expanded=new Set();
+function toggleClass(cid){ if(expanded.has(cid)) expanded.delete(cid); else expanded.add(cid); renderManage(); }
+
+/* -------- 반·학생 목록 -------- */
+function studentsOf(cid){
+  return Object.entries(accCache)
+    .filter(([code,a])=> cid==="" ? noClass(a) : inClass(a,cid))
+    .sort((a,b)=>a[1].name.localeCompare(b[1].name,"ko"));
+}
+function renderManage(){
+  const items=Object.entries(classesCache).sort((a,b)=>a[1].name.localeCompare(b[1].name,"ko"));
+  let html="";
+  const block=(title,cid,isReal)=>{
+    const st=studentsOf(cid);
+    const open=expanded.has(cid);
+    html+=`<div class="clsblock">
+      <div class="clshead" data-cls-toggle="${cid}">
+        <span class="chev ${open?'open':''}">▸</span>
+        <span class="nm">${esc(title)}</span><span class="cnt">${st.length}명</span>
+        <span class="sp"></span>
+        <span class="clsbtns">`
+        + (isReal?`<button class="minibtn" data-add="${cid}">변경</button>`:``)
+      + `</span></div>`;
+    if(open){
+      html+=`<div class="clsbody">`+
+        (st.length? st.map(([code,a])=>`<div class="tx" data-alledit="${code}" style="cursor:pointer;"><div class="dot n">${esc(a.name.slice(0,1))}</div>
+          <div class="info"><b>${esc(a.name)}</b><span class="mono">코드 ${code}</span></div>
+          <div class="amt">${money(a.balance)}</div>`
+          + (isReal?`<button class="pull" data-pull="${cid}|${code}">빼기</button>`:`<button class="del" data-delstu="${code}">삭제</button>`)
+          + `</div>`).join("")
+        : `<div class="empty" style="padding:14px">학생 없음</div>`)
+      +`</div>`;
+    }
+    html+=`</div>`;
+  };
+  items.forEach(([id,c])=>block(c.name,id,true));
+  block("미분류","",false);
+  $("clsList").innerHTML=html;
+}
+
+/* 클릭 위임: 헤더 토글 + 버튼들 */
+document.addEventListener("click", e=>{
+  const btnAdd=e.target.closest && e.target.closest("[data-add]");
+  if(btnAdd){ openAddModal(btnAdd.getAttribute("data-add")); return; }
+  const btnPull=e.target.closest && e.target.closest("[data-pull]");
+  if(btnPull){ const [cid,code]=btnPull.getAttribute("data-pull").split("|"); removeFromClass(cid,code); return; }
+  const btnDelS=e.target.closest && e.target.closest("[data-delstu]");
+  if(btnDelS){ deleteStudent(btnDelS.getAttribute("data-delstu")); return; }
+  const head=e.target.closest && e.target.closest("[data-cls-toggle]");
+  if(head){ toggleClass(head.getAttribute("data-cls-toggle")); return; }
+  const txHead=e.target.closest && e.target.closest("[data-tx-toggle]");
+  if(txHead){ const k=txHead.getAttribute("data-tx-toggle"); if(txExpandedDates.has(k)) txExpandedDates.delete(k); else txExpandedDates.add(k); renderTx(); return; }
+  const btnTxEdit=e.target.closest && e.target.closest("[data-tx-edit]");
+  if(btnTxEdit){ openTxModal(btnTxEdit.getAttribute("data-tx-edit")); return; }
+  const btnTxRestore=e.target.closest && e.target.closest("[data-tx-restore]");
+  if(btnTxRestore){ restoreTx(btnTxRestore.getAttribute("data-tx-restore")); return; }
+  const schip=e.target.closest && e.target.closest("[data-scid]");
+  if(schip){ const id=schip.getAttribute("data-scid"); if(stuSel.has(id)) stuSel.delete(id); else stuSel.add(id); renderStuChips(); return; }
+  const btnDelReason=e.target.closest && e.target.closest("[data-delreason]");
+  if(btnDelReason){ const [type,id]=btnDelReason.getAttribute("data-delreason").split("|"); deleteReason(type,id); return; }
+  const balRow=e.target.closest && e.target.closest("[data-baltx]");
+  if(balRow){ openStuTxModal(balRow.getAttribute("data-baltx")); return; }
+  const alledit=e.target.closest && e.target.closest("[data-alledit]");
+  if(alledit){ openStudentEditModal(alledit.getAttribute("data-alledit")); return; }
+  const secid=e.target.closest && e.target.closest("[data-secid]");
+  if(secid){ const id=secid.getAttribute("data-secid"); if(stuEditClassSel.has(id)) stuEditClassSel.delete(id); else stuEditClassSel.add(id); renderStuEditClassChips(); return; }
+});
+
+/* -------- 반 추가/이름변경/삭제 -------- */
+function addClass(){
+  $("clsErr").textContent="";
+  const n=$("newClass").value.trim();
+  if(!n){ $("clsErr").textContent="반 이름을 입력하세요."; return; }
+  db.ref("classes").push({ name:n, createdAt:Date.now() })
+    .then(()=>{ $("newClass").value=""; toast("반 추가됨"); })
+    .catch(()=>{ $("clsErr").textContent="권한이 없거나 오류입니다."; });
+}
+function renameClassFromModal(){
+  const cid=modalClass; if(!cid) return;
+  const v=$("modalRenameInput").value.trim();
+  const cur=(classesCache[cid]&&classesCache[cid].name)||"";
+  if(!v){ $("modalRenameInput").value=cur; return; } // 비우면 원래 이름으로 되돌림
+  if(v===cur) return; // 변경 없으면 아무것도 안 함
+  db.ref("classes/"+cid+"/name").set(v).then(()=>{
+    toast("반 이름 변경됨");
+    $("modalTitle").textContent = v+" · 학생 변경";
+  }).catch(()=>toast("권한이 없거나 오류입니다."));
+}
+function deleteClassFromModal(){
+  const cid=modalClass; if(!cid) return;
+  const nm=(classesCache[cid]&&classesCache[cid].name)||"이 반";
+  const students=studentsOf(cid);
+  const warn = students.length ? `<br><span style="color:var(--coral-deep);font-size:13px;font-weight:700;">이 반 학생 ${students.length}명은 자동으로 미분류로 이동됩니다.</span>` : '';
+  askConfirm(`<b>${esc(nm)}</b>을(를) 삭제할까요?${warn}<br><span style="color:var(--muted);font-size:13px;">되돌릴 수 없습니다.</span>`, ()=>{
+    const updates={};
+    updates["classes/"+cid]=null;
+    students.forEach(([code,a])=>{
+      updates["accounts/"+code+"/classIds/"+cid]=null;
+      if(a.classId===cid) updates["accounts/"+code+"/classId"]=null;
+    });
+    db.ref().update(updates).then(()=>{
+      toast("반 삭제됨");
+      modalClass=null; // 삭제된 반 이름이 닫을 때 재저장되지 않도록
+      $("modal").classList.add("hide");
+    }).catch(()=>toast("권한이 없거나 오류입니다."));
+  }, "반 삭제");
+}
+
+/* -------- 학생 추가 (반 다중 선택 · 코드 필수) -------- */
+let stuSel=new Set();
+function renderStuChips(){
+  const el=$("stuClassChips"); if(!el) return;
+  const items=Object.entries(classesCache).sort((a,b)=>a[1].name.localeCompare(b[1].name,"ko"));
+  el.innerHTML = items.length ? items.map(([id,c])=>`<button type="button" class="chip ${stuSel.has(id)?'on':''}" data-scid="${id}">${esc(c.name)}</button>`).join("")
+    : `<span style="font-size:12.5px;color:var(--muted)">아직 반이 없습니다.</span>`;
+}
+function addStudent(){
+  $("stuErr").textContent="";
+  const name=$("stuName").value.trim();
+  if(!name){ $("stuErr").textContent="이름을 입력하세요."; return; }
+  const code=$("stuCode").value.trim().toUpperCase();
+  if(!code){ $("stuErr").textContent="⚠ 코드를 입력하세요. (코드는 비울 수 없습니다)"; return; }
+  if(accCache[code]){ $("stuErr").textContent="이미 쓰는 코드입니다."; return; }
+  const obj={ name, balance:0, createdAt:Date.now() };
+  if(stuSel.size){ obj.classIds={}; stuSel.forEach(c=>obj.classIds[c]=true); }
+  db.ref("accounts/"+code).set(obj).then(()=>{
+    $("stuName").value=""; $("stuCode").value=""; stuSel=new Set(); renderStuChips();
+    toast(`${name} 등록 · 코드 ${code}`);
+  }).catch(()=>{ $("stuErr").textContent="권한이 없거나 오류입니다."; });
+}
+function deleteStudent(code){
+  const a=accCache[code]||{};
+  askConfirm(`<b>${esc(a.name||"이 학생")}</b>을(를) 완전히 삭제할까요?<br><span style="color:var(--muted);font-size:13px;">거래내역은 남습니다. 되돌릴 수 없습니다.</span>`, ()=>{
+    db.ref("studentTx/"+code).remove().catch(()=>{});
+    db.ref("accounts/"+code).remove().then(()=>toast("삭제됨")).catch(()=>toast("권한이 없거나 오류입니다."));
+  }, "학생 삭제");
+}
+function removeFromClass(cid,code){
+  const a=accCache[code]||{};
+  const name=a.name||"학생";
+  const updates={};
+  updates["accounts/"+code+"/classIds/"+cid]=null;
+  if(a.classId===cid) updates["accounts/"+code+"/classId"]=null; // 예전 형식 정리
+  db.ref().update(updates).then(()=>{
+    pushUndo(name, ()=>db.ref("accounts/"+code+"/classIds/"+cid).set(true));
+    toast(name+" 이 반에서 제외됨", true);
+  }).catch(()=>toast("권한이 없거나 오류입니다."));
+}
+
+/* -------- 전체 학생 (검색 + 수정/휴원/삭제) -------- */
+function renderAllStu(){
+  const box=$("allStuList"); if(!box) return;
+  const q=($("allStuSearch")&&$("allStuSearch").value||"").trim().toLowerCase();
+  let entries=Object.entries(accCache);
+  if(q) entries=entries.filter(([code,a])=>(a.name||"").toLowerCase().includes(q) || code.toLowerCase().includes(q));
+  entries.sort((a,b)=>(a[1].name||"").localeCompare(b[1].name||"","ko"));
+  box.innerHTML = entries.length ? entries.map(([code,a])=>{
+    const withdrawn=!!a.withdrawn;
+    return `<div class="tx" data-alledit="${code}" style="cursor:pointer;${withdrawn?' opacity:.5;':''}">
+      <div class="dot n">${esc((a.name||"?").slice(0,1))}</div>
+      <div class="info"><b>${esc(a.name||"")}${withdrawn?' <span style="color:var(--coral-deep);font-weight:800;font-size:11px;">(휴원)</span>':''}</b><span class="mono">코드 ${code}</span></div>
+      <div class="amt">${money(a.balance)}</div>
+    </div>`;
+  }).join("") : `<div class="empty">${q?"검색 결과가 없습니다.":"등록된 학생이 없습니다."}</div>`;
+}
+
+let stuEditOrigCode=null, stuEditClassSel=new Set();
+function openStudentEditModal(code){
+  const a=accCache[code]; if(!a) return;
+  stuEditOrigCode=code;
+  stuEditClassSel=new Set(classesOf(a));
+  $("stuEditName").value=a.name||"";
+  $("stuEditCode").value=code;
+  $("stuEditWithdrawn").checked=!!a.withdrawn;
+  renderStuEditClassChips();
+  $("stuEditErr").textContent="";
+  $("stuEditModal").classList.remove("hide");
+}
+function closeStuEditModal(){ $("stuEditModal").classList.add("hide"); stuEditOrigCode=null; }
+function renderStuEditClassChips(){
+  const el=$("stuEditClassChips"); if(!el) return;
+  const items=Object.entries(classesCache).sort((a,b)=>a[1].name.localeCompare(b[1].name,"ko"));
+  el.innerHTML = items.length ? items.map(([id,c])=>`<button type="button" class="chip ${stuEditClassSel.has(id)?'on':''}" data-secid="${id}">${esc(c.name)}</button>`).join("")
+    : `<span style="font-size:12.5px;color:var(--muted)">아직 반이 없습니다.</span>`;
+}
+function saveStuEdit(){
+  const origCode=stuEditOrigCode; if(!origCode) return;
+  const name=$("stuEditName").value.trim();
+  if(!name){ $("stuEditErr").textContent="이름을 입력하세요."; return; }
+  const newCode=$("stuEditCode").value.trim().toUpperCase();
+  if(!newCode){ $("stuEditErr").textContent="코드를 입력하세요."; return; }
+  if(newCode!==origCode && accCache[newCode]){ $("stuEditErr").textContent="이미 사용 중인 코드입니다."; return; }
+  const withdrawn=$("stuEditWithdrawn").checked;
+  const a=accCache[origCode]||{};
+
+  if(newCode===origCode){
+    // 코드 변경 없음
+    const updates={};
+    updates["accounts/"+origCode+"/name"]=name;
+    updates["accounts/"+origCode+"/withdrawn"]=withdrawn?true:null;
+    Object.keys(classesCache).forEach(cid=>{
+      updates["accounts/"+origCode+"/classIds/"+cid] = stuEditClassSel.has(cid) ? true : null;
+    });
+    if(a.classId && !stuEditClassSel.has(a.classId)) updates["accounts/"+origCode+"/classId"]=null;
+    db.ref().update(updates).then(()=>{ toast("학생 정보 저장됨"); closeStuEditModal(); })
+      .catch(()=>{ $("stuEditErr").textContent="권한이 없거나 오류입니다."; });
+    return;
+  }
+
+  // 코드 변경: 새 코드로 계정을 옮기고, 관련 거래내역의 코드도 함께 갱신
+  const newAccount = { name, balance: Number(a.balance||0) };
+  if(a.createdAt) newAccount.createdAt=a.createdAt;
+  const classIds={};
+  stuEditClassSel.forEach(cid=>{ classIds[cid]=true; });
+  if(Object.keys(classIds).length) newAccount.classIds=classIds;
+  if(withdrawn) newAccount.withdrawn=true;
+
+  const updates={};
+  updates["accounts/"+newCode]=newAccount;
+  updates["accounts/"+origCode]=null;
+  Object.entries(txCache).forEach(([id,t])=>{
+    if(t.code===origCode){
+      updates["transactions/"+id+"/code"]=newCode;
+      // move the per-student mirror to the new code
+      updates["studentTx/"+origCode+"/"+id]=null;
+      const m={ amount:(t.amount!=null?t.amount:0), memo:(t.memo!=null?t.memo:"") };
+      if(t.ts!=null) m.ts=t.ts;
+      if(t.localTs!=null) m.localTs=t.localTs;
+      if(t.balanceAfter!=null) m.balanceAfter=t.balanceAfter;
+      if(t.voided) m.voided=true;
+      if(t.canceled) m.canceled=true;
+      updates["studentTx/"+newCode+"/"+id]=m;
+    }
+  });
+
+  db.ref().update(updates).then(()=>{ toast("학생 코드가 "+newCode+"(으)로 변경되었습니다"); closeStuEditModal(); })
+    .catch(()=>{ $("stuEditErr").textContent="권한이 없거나 오류입니다."; });
+}
+function deleteStuFromEdit(){
+  const code=stuEditOrigCode; if(!code) return;
+  const a=accCache[code]||{};
+  askConfirm(`<b>${esc(a.name||"이 학생")}</b>을(를) 완전히 삭제할까요?<br><span style="color:var(--muted);font-size:13px;">거래내역은 남습니다. 되돌릴 수 없습니다.</span>`, ()=>{
+    db.ref("studentTx/"+code).remove().catch(()=>{});
+    db.ref("accounts/"+code).remove().then(()=>{ toast("삭제됨"); closeStuEditModal(); }).catch(()=>toast("권한이 없거나 오류입니다."));
+  }, "학생 삭제");
+}
+
+/* -------- 학생 추가 모달 (반별 학생 변경: 추가/제외 모두 가능) -------- */
+let modalClass=null, modalOriginal=new Set(), modalSel=new Set();
+function openAddModal(cid){
+  modalClass=cid;
+  modalOriginal=new Set(studentsOf(cid).map(([code])=>code));
+  modalSel=new Set(modalOriginal);
+  $("modalTitle").textContent=((classesCache[cid]&&classesCache[cid].name)||"반")+" · 학생 변경";
+  const isReal = cid !== "";
+  $("modalClassTools").classList.toggle("hide", !isReal);
+  if(isReal){
+    $("modalRenameInput").value = (classesCache[cid]&&classesCache[cid].name)||"";
+    $("modalDeleteBtn").disabled = false;
+    $("modalDeleteBtn").style.opacity = "1";
+    $("modalDeleteBtn").style.pointerEvents = "";
+    $("modalDeleteBtn").title = "";
+  }
+  $("modalSearch").value=""; renderModalList();
+  $("modal").classList.remove("hide");
+}
+function closeModal(){ renameClassFromModal(); $("modal").classList.add("hide"); }
+function renderModalList(){
+  const q=$("modalSearch").value.trim().toLowerCase();
+  const all=Object.entries(accCache)
+    .sort((a,b)=>{
+      const wa=modalOriginal.has(a[0])?0:1, wb=modalOriginal.has(b[0])?0:1;
+      if(wa!==wb) return wa-wb;
+      return a[1].name.localeCompare(b[1].name,"ko");
+    });
+  const rows=all.filter(([code,a])=> !q || a.name.toLowerCase().includes(q) || code.toLowerCase().includes(q));
+  $("modalList").innerHTML = rows.length ? rows.map(([code,a])=>{
+    const was=modalOriginal.has(code);
+    return `<label class="ck"><input type="checkbox" data-mcode="${code}" ${modalSel.has(code)?'checked':''}>
+      <span><b>${esc(a.name)}</b> <span class="c mono">${code}</span></span>
+      ${was?'<span class="tagged">기존</span>':''}</label>`;
+  }).join("") : `<div class="empty">학생이 없습니다.</div>`;
+  updateModalCount();
+}
+function updateModalCount(){
+  const add=[...modalSel].filter(c=>!modalOriginal.has(c)).length;
+  const rem=[...modalOriginal].filter(c=>!modalSel.has(c)).length;
+  let t=modalSel.size+"명 선택";
+  if(add||rem) t += ` (+${add}/-${rem})`;
+  $("modalCount").textContent=t;
+}
+function confirmChange(){
+  const cid=modalClass;
+  const toAdd=[...modalSel].filter(c=>!modalOriginal.has(c));
+  const toRemove=[...modalOriginal].filter(c=>!modalSel.has(c));
+  if(!toAdd.length && !toRemove.length){ closeModal(); return; }
+  const clsName=(classesCache[cid]&&classesCache[cid].name)||"반";
+  const updates={};
+  toAdd.forEach(code=>{ updates["accounts/"+code+"/classIds/"+cid]=true; });
+  toRemove.forEach(code=>{
+    updates["accounts/"+code+"/classIds/"+cid]=null;
+    const a=accCache[code]||{};
+    if(a.classId===cid) updates["accounts/"+code+"/classId"]=null;
+  });
+  db.ref().update(updates).then(()=>{
+    pushUndo(clsName, ()=>{
+      const rev={};
+      toAdd.forEach(code=>{ rev["accounts/"+code+"/classIds/"+cid]=null; });
+      toRemove.forEach(code=>{ rev["accounts/"+code+"/classIds/"+cid]=true; });
+      return db.ref().update(rev);
+    });
+    const parts=[]; if(toAdd.length) parts.push("+"+toAdd.length); if(toRemove.length) parts.push("-"+toRemove.length);
+    toast(clsName+" 변경 완료 ("+parts.join(" ")+")", true);
+    closeModal();
+  }).catch(()=>toast("권한이 없거나 오류입니다."));
+}
+document.addEventListener("change", e=>{
+  const t=e.target; if(!t.matches) return;
+  if(t.matches('#modalList input[type=checkbox]')){
+    const code=t.getAttribute("data-mcode");
+    if(t.checked) modalSel.add(code); else modalSel.delete(code);
+    updateModalCount();
+  }
+});
+$("modalSearch").addEventListener("input", renderModalList);
+if($("modalRenameInput")){
+  $("modalRenameInput").addEventListener("blur", renameClassFromModal);
+  $("modalRenameInput").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); renameClassFromModal(); $("modalRenameInput").blur(); } });
+}
+if($("txSearch")) $("txSearch").addEventListener("input", renderTx);
+if($("balSearch")) $("balSearch").addEventListener("input", renderBal);
+if($("allStuSearch")) $("allStuSearch").addEventListener("input", renderAllStu);
+
+/* -------- 거래 변경 / 취소 / 복구 -------- */
+function openTxModal(id){
+  const t=txCache[id]; if(!t) return;
+  $("txModalTitle").textContent=(t.name||"거래")+" · 거래 변경";
+  $("txModalBody").innerHTML = txModalBodyHtml(id,t);
+  $("txModal").classList.remove("hide");
+}
+function closeTxModal(){ $("txModal").classList.add("hide"); }
+function txModalBodyHtml(id,t){
+  const adminVoided=!!t.voided, teacherCanceled=!!t.canceled, voided=adminVoided||teacherCanceled;
+  const hist=Object.values(t.editHistory||{}).sort((a,b)=>b.at-a.at);
+  return `
+    <div class="who" style="text-align:left;margin:0 0 14px;">${esc(t.name)} · <span class="mono">${t.code}</span> · ${timeStr(t.localTs||t.ts)}</div>
+    ${voided?`<div class="banner">이 거래는 취소된 상태입니다.${teacherCanceled?" (선생님이 취소함)":""}${t.voidReason?"<br>사유: "+esc(t.voidReason):""}</div>`:``}
+    <div class="field"><label>금액 ($ · 지급은 +, 차감은 -)</label><input id="txeAmt" type="number" step="1" value="${t.amount}" ${voided?'disabled':''}/></div>
+    <div class="field"><label>메모</label><input id="txeMemo" type="text" value="${esc(t.memo||"")}" ${voided?'disabled':''}/></div>
+    <div class="err" id="txeErr"></div>
+    <div id="txeMainBtns" class="row" ${voided?'style="display:none"':''}>
+      <button class="btn btn-gold" onclick="saveTxEdit('${id}')">저장</button>
+      <button class="btn btn-coral" onclick="showVoidReason()">거래 취소</button>
+    </div>
+    ${voided?`<button class="btn btn-ghost" onclick="restoreTx('${id}')">↺ 원상복구</button>`:``}
+    <div id="voidReasonBox" class="hide" style="margin-top:12px;">
+      <div class="field"><label>취소 사유 (선택)</label><input id="txeVoidReason" type="text" placeholder="예: 잘못 입력됨"/></div>
+      <div class="row"><button class="btn btn-coral" onclick="confirmVoidTx('${id}')">취소 확정</button><button class="btn btn-ghost" onclick="hideVoidReason()">돌아가기</button></div>
+    </div>
+    ${hist.length?`
+    <div style="margin-top:16px;">
+      <button class="collapse-head" onclick="togglePanel('editHistBody')"><span>수정 내역 (${hist.length}건)</span><span class="chev" id="chev-editHistBody">▸</span></button>
+      <div id="editHistBody" class="collapse-body hide">
+        ${hist.map(h=>`<div class="tx" style="padding:9px 2px;">
+          <div class="info"><b style="font-size:12.5px;">${timeStr(h.at)}</b>
+          <span>${signedMoney(h.prevAmount)} · ${esc(h.prevMemo||"(메모 없음)")} → ${signedMoney(h.newAmount)} · ${esc(h.newMemo||"(메모 없음)")}</span></div>
+        </div>`).join("")}
+      </div>
+    </div>`:``}
+  `;
+}
+function showVoidReason(){ $("txeMainBtns").style.display="none"; $("voidReasonBox").classList.remove("hide"); }
+function hideVoidReason(){ $("voidReasonBox").classList.add("hide"); $("txeMainBtns").style.display=""; }
+
+function saveTxEdit(id){
+  const t=txCache[id]; if(!t || t.voided || t.canceled) return;
+  const newAmt=Math.trunc(Number($("txeAmt").value));
+  const newMemo=$("txeMemo").value.trim();
+  if(!newAmt){ $("txeErr").textContent="금액을 입력하세요 (0은 불가)."; return; }
+  const code=t.code, oldAmt=t.amount, oldMemo=t.memo||"";
+  const wasEdited=!!t.edited;
+  if(newAmt===oldAmt && newMemo===oldMemo){ closeTxModal(); return; }
+  const delta=newAmt-oldAmt;
+  const curBal=(accCache[code]&&accCache[code].balance)||0;
+  const newBal=curBal+delta;
+  const histKey=db.ref().push().key;
+  const updates={};
+  updates["transactions/"+id+"/amount"]=newAmt;
+  updates["transactions/"+id+"/memo"]=newMemo;
+  updates["transactions/"+id+"/edited"]=true;
+  updates["transactions/"+id+"/editHistory/"+histKey]={ at:Date.now(), prevAmount:oldAmt, prevMemo:oldMemo, newAmount:newAmt, newMemo:newMemo };
+  updates["accounts/"+code+"/balance"]=newBal;
+  updates["studentTx/"+code+"/"+id+"/amount"]=newAmt;
+  updates["studentTx/"+code+"/"+id+"/memo"]=newMemo;
+  db.ref().update(updates).then(()=>{
+    pushUndo(t.name, ()=>{
+      const rev={};
+      rev["transactions/"+id+"/amount"]=oldAmt;
+      rev["transactions/"+id+"/memo"]=oldMemo;
+      rev["transactions/"+id+"/editHistory/"+histKey]=null;
+      if(!wasEdited) rev["transactions/"+id+"/edited"]=null;
+      rev["accounts/"+code+"/balance"]=curBal;
+      rev["studentTx/"+code+"/"+id+"/amount"]=oldAmt;
+      rev["studentTx/"+code+"/"+id+"/memo"]=oldMemo;
+      return db.ref().update(rev);
+    });
+    toast(t.name+" 거래 변경됨", true);
+    closeTxModal();
+  }).catch(()=>{ $("txeErr").textContent="권한이 없거나 오류입니다."; });
+}
+function confirmVoidTx(id){
+  const t=txCache[id]; if(!t || t.voided || t.canceled) return;
+  const reason=$("txeVoidReason").value.trim();
+  const code=t.code;
+  const curBal=(accCache[code]&&accCache[code].balance)||0;
+  const newBal=curBal-t.amount;
+  const updates={};
+  updates["transactions/"+id+"/voided"]=true;
+  updates["transactions/"+id+"/voidReason"]=reason||"";
+  updates["transactions/"+id+"/voidedAt"]=Date.now();
+  updates["accounts/"+code+"/balance"]=newBal;
+  updates["studentTx/"+code+"/"+id+"/voided"]=true;
+  db.ref().update(updates).then(()=>{
+    pushUndo(t.name, ()=>restoreTxInternal(id));
+    toast(t.name+" 거래 취소됨", true);
+    closeTxModal();
+  }).catch(()=>{ $("txeErr").textContent="권한이 없거나 오류입니다."; });
+}
+function restoreTxInternal(id){
+  const t=txCache[id]; if(!t || (!t.voided && !t.canceled)) return Promise.resolve();
+  const code=t.code;
+  const curBal=(accCache[code]&&accCache[code].balance)||0;
+  const newBal=curBal+t.amount;
+  const updates={};
+  updates["transactions/"+id+"/voided"]=null;
+  updates["transactions/"+id+"/voidReason"]=null;
+  updates["transactions/"+id+"/voidedAt"]=null;
+  updates["transactions/"+id+"/canceled"]=null;
+  updates["transactions/"+id+"/canceledAt"]=null;
+  updates["accounts/"+code+"/balance"]=newBal;
+  updates["studentTx/"+code+"/"+id+"/voided"]=null;
+  updates["studentTx/"+code+"/"+id+"/canceled"]=null;
+  return db.ref().update(updates);
+}
+function restoreTx(id){
+  const t=txCache[id];
+  const nm = t ? esc(t.name||"") : "";
+  askConfirm(`${nm?`<b>${nm}</b>님의 거래를<br>`:"이 거래를 "}원상복구할까요?`, ()=>{
+    restoreTxInternal(id).then(()=>toast("원상복구되었습니다")).catch(()=>toast("권한이 없거나 오류입니다."));
+  }, "원상복구");
+}
+
+/* -------- tabs / wipe -------- */
+function tab(w){
+  ["cls","tx","bal","set"].forEach(t=>$("tab-"+t).classList.toggle("on",t===w));
+  $("clsCard").classList.toggle("hide", w!=="cls");
+  $("txCard").classList.toggle("hide", w!=="tx");
+  $("balCard").classList.toggle("hide", w!=="bal");
+  $("setCard").classList.toggle("hide", w!=="set");
+}
+/* -------- 백업 -------- */
+const BACKUP_KEEP_DEFAULT = 14;      // 보관 개수를 따로 설정 안 했을 때 기본값
+const BACKUP_INTERVAL_MS = 24*60*60*1000; // 24시간마다 자동 백업
+/* 루트(.read:false)는 직접 읽을 수 없어서, admin이 읽기 권한을 가진 경로들만 따로따로 읽어서 합칩니다. */
+const BACKUP_PATHS = ["accounts","classes","transactions","config","teachers","reasons","teacherPrefs"];
+
+function getBackupKeep(){
+  return db.ref("config/backupKeep").once("value").then(s=>{
+    const v = Number(s.val());
+    return (v && v>0) ? v : BACKUP_KEEP_DEFAULT;
+  });
+}
+function saveBackupKeep(){
+  const v = Math.floor(Number($("backupKeepInput").value));
+  if(!v || v<1){ toast("1 이상의 숫자를 입력하세요."); return; }
+  db.ref("config/backupKeep").set(v).then(()=>{
+    toast("보관 개수가 "+v+"개로 저장됐어요.");
+    pruneOldBackups().then(renderBackupInfo);
+  }).catch(()=>toast("저장 중 오류가 발생했습니다."));
+}
+function fetchBackupSnapshot(){
+  return Promise.all(BACKUP_PATHS.map(p=>db.ref(p).once("value").then(s=>[p, s.val()])))
+    .then(entries=>{
+      const rest = {};
+      entries.forEach(([p,v])=>{ if(v!==null) rest[p]=v; });
+      return { createdAt: Date.now(), data: rest };
+    });
+}
+function runBackup(){
+  return fetchBackupSnapshot().then(payload=>{
+    const id = String(payload.createdAt);
+    return db.ref("backups/"+id).set(payload)
+      .then(()=>db.ref("backupMeta/lastAt").set(payload.createdAt))
+      .then(pruneOldBackups)
+      .then(()=>id);
+  });
+}
+function pruneOldBackups(){
+  return getBackupKeep().then(keep=>
+    db.ref("backups").once("value").then(snap=>{
+      const v = snap.val()||{};
+      const ids = Object.keys(v).sort((a,b)=>Number(a)-Number(b));
+      if(ids.length <= keep) return;
+      const updates={};
+      ids.slice(0, ids.length - keep).forEach(id=>{ updates["backups/"+id]=null; });
+      return db.ref().update(updates);
+    })
+  );
+}
+function maybeAutoBackup(){
+  db.ref("backupMeta/lastAt").once("value").then(snap=>{
+    const last = snap.val()||0;
+    if(Date.now() - last > BACKUP_INTERVAL_MS){
+      runBackup().then(renderBackupInfo).catch(()=>{});
+    }
+  });
+}
+function manualBackup(){
+  toast("백업 중…");
+  runBackup().then(()=>{ toast("백업 완료"); renderBackupInfo(); })
+    .catch(()=>toast("백업 중 오류가 발생했습니다."));
+}
+function renderBackupInfo(){
+  db.ref("backupMeta/lastAt").once("value").then(snap=>{
+    const last = snap.val();
+    if($("backupLastAt")) $("backupLastAt").textContent = last ? new Date(last).toLocaleString("ko-KR") : "아직 백업된 적 없음";
+  });
+  getBackupKeep().then(keep=>{
+    if($("backupKeepInput") && !$("backupKeepInput").value) $("backupKeepInput").value = keep;
+    db.ref("backups").once("value").then(snap=>{
+      const v = snap.val()||{};
+      const n = Object.keys(v).length;
+      if($("backupCount")) $("backupCount").textContent = n ? n+"개 보관 중 (최근 "+keep+"개까지 유지)" : "보관된 백업 없음";
+    });
+  });
+}
+
+/* -------- 백업 파일 다운로드 (+ 선택적으로 지정한 폴더에 저장) -------- */
+const supportsFolderPicker = typeof window.showDirectoryPicker === "function";
+let backupDirHandle = null;
+
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    const req = indexedDB.open("wingsBackupPrefs", 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore("handles"); };
+    req.onsuccess = ()=>res(req.result);
+    req.onerror = ()=>rej(req.error);
+  });
+}
+async function idbSet(key, val){
+  const d = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx = d.transaction("handles","readwrite");
+    tx.objectStore("handles").put(val, key);
+    tx.oncomplete = ()=>res();
+    tx.onerror = ()=>rej(tx.error);
+  });
+}
+async function idbGet(key){
+  const d = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx = d.transaction("handles","readonly");
+    const req = tx.objectStore("handles").get(key);
+    req.onsuccess = ()=>res(req.result);
+    req.onerror = ()=>rej(req.error);
+  });
+}
+async function chooseBackupFolder(){
+  if(!supportsFolderPicker){ toast("이 브라우저는 폴더 자동 저장을 지원하지 않아요."); return; }
+  try{
+    const handle = await window.showDirectoryPicker({ id:"wings-backup", mode:"readwrite" });
+    backupDirHandle = handle;
+    await idbSet("backupDir", handle);
+    if($("folderPickHint")) $("folderPickHint").textContent = "선택된 폴더: "+handle.name+" · 다운로드 버튼을 누르면 이 폴더에 저장돼요.";
+    toast("저장 폴더가 설정됐어요: "+handle.name);
+  }catch(e){ /* 사용자가 취소한 경우 등은 조용히 무시 */ }
+}
+async function restoreBackupFolderHandle(){
+  if(!supportsFolderPicker) return;
+  try{
+    const handle = await idbGet("backupDir");
+    if(!handle) return;
+    backupDirHandle = handle;
+    const perm = await handle.queryPermission({mode:"readwrite"});
+    if($("folderPickHint")) $("folderPickHint").textContent = perm==="granted"
+      ? "선택된 폴더: "+handle.name+" · 다운로드 버튼을 누르면 이 폴더에 저장돼요."
+      : "이전에 선택한 폴더(\""+handle.name+"\")가 있어요. 다운로드를 누르면 권한을 다시 확인해요.";
+  }catch(e){}
+}
+async function ensureFolderPermission(){
+  if(!backupDirHandle) return false;
+  let perm = await backupDirHandle.queryPermission({mode:"readwrite"});
+  if(perm !== "granted"){
+    try{ perm = await backupDirHandle.requestPermission({mode:"readwrite"}); }catch(e){ return false; }
+  }
+  return perm === "granted";
+}
+function backupFileName(){
+  const d = new Date();
+  const p = x=>String(x).padStart(2,"0");
+  return `wings-money-backup-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`;
+}
+async function downloadBackup(){
+  toast("백업 파일 준비 중…");
+  try{
+    const payload = await fetchBackupSnapshot();
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], {type:"application/json"});
+    const name = backupFileName();
+    if(backupDirHandle && await ensureFolderPermission()){
+      const fh = await backupDirHandle.getFileHandle(name, {create:true});
+      const w = await fh.createWritable();
+      await w.write(blob);
+      await w.close();
+      toast("선택한 폴더에 저장됐어요: "+name);
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 3000);
+    toast("다운로드 폴더에 저장됐어요: "+name);
+  }catch(e){
+    toast("다운로드 중 오류가 발생했습니다.");
+  }
+}
+if(supportsFolderPicker && $("folderPickWrap")) $("folderPickWrap").classList.remove("hide");
+
+function resetValues(){
+  if(!confirm("정말 모든 학생의 잔액을 0으로 되돌리고, 거래내역과 선생님 즐겨찾기를 전부 삭제할까요?\n반·학생 명단은 유지됩니다. 되돌릴 수 없습니다.")) return;
+  const updates={};
+  Object.keys(accCache).forEach(code=>{ updates["accounts/"+code+"/balance"]=0; });
+  Promise.all([
+    db.ref().update(updates),
+    db.ref("transactions").remove(),
+    db.ref("studentTx").remove(),
+    db.ref("teacherPrefs").remove()
+  ]).then(()=>toast("값 초기화 완료")).catch(()=>toast("권한이 없거나 오류입니다."));
+}
+
+if(configured && $("pw")){ $("pw").addEventListener("keydown", e=>{ if(e.key==="Enter") signIn(); }); }
+if($("newReasonGive")) $("newReasonGive").addEventListener("keydown", e=>{ if(e.key==="Enter") addReason('give'); });
+if($("newReasonGiveAmt")) $("newReasonGiveAmt").addEventListener("keydown", e=>{ if(e.key==="Enter") addReason('give'); });
+if($("newReasonDeduct")) $("newReasonDeduct").addEventListener("keydown", e=>{ if(e.key==="Enter") addReason('deduct'); });
+if($("newReasonDeductAmt")) $("newReasonDeductAmt").addEventListener("keydown", e=>{ if(e.key==="Enter") addReason('deduct'); });
+</script>
+</body>
+</html>
